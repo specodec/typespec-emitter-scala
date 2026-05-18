@@ -157,7 +157,7 @@ function generateFieldRead(L: string[], f: { name: string; type: Type; optional:
   if (isArrayType(f.type)) {
     const elem = arrayElementType(f.type)!;
     const scalaElem = typeToScala(elem);
-    const tmp = `_tmp${scalaFieldReadCounter++}`;
+    const tmp = `_tmp`;
     L.push(`${indent}val ${tmp} = scala.collection.mutable.ArrayBuffer[${scalaElem}]()`);
     L.push(`${indent}r.beginArray()`);
     L.push(`${indent}while (r.hasNextElement()) { ${tmp} += ${readExpr(elem, "r")} }`);
@@ -166,7 +166,7 @@ function generateFieldRead(L: string[], f: { name: string; type: Type; optional:
   } else if (isRecordType(f.type)) {
     const elem = recordElementType(f.type)!;
     const scalaElem = typeToScala(elem);
-    const tmp = `_tmp${scalaFieldReadCounter++}`;
+    const tmp = `_tmp`;
     L.push(`${indent}val ${tmp} = scala.collection.mutable.Map[String, ${scalaElem}]()`);
     L.push(`${indent}r.beginObject()`);
     L.push(`${indent}while (r.hasNextField()) { val key = r.readFieldName(); ${tmp}(key) = ${readExpr(elem, "r")} }`);
