@@ -152,33 +152,32 @@ function writeExpr(expr: string, type: Type, w: string): string {
   return `// TODO: unknown type`;
 }
 
+let scalaFieldReadCounter = 0;
+function generateFieldRead(L: string[], f: { name: string; type: Type; optional: boolean }, varName: string, indent: string): void {
+  if (isArrayType(f.type)) {
+    const elem = arrayElementType(f.type)!;
+    const scalaElem = typeToScala(elem);
+    const tmp = `_tmp${scalaFieldReadCounter++}`;
+    L.push(`${indent}val ${tmp} = scala.collection.mutable.ArrayBuffer[${scalaElem}]()`);
+    L.push(`${indent}r.beginArray()`);
+    L.push(`${indent}while (r.hasNextElement()) { ${tmp} += ${readExpr(elem, "r")} }`);
+    L.push(`${indent}r.endArray()`);
+    L.push(`${indent}${varName} = ${f.optional ? `Some(${tmp}.toSeq)` : `${tmp}.toSeq`}`);
+  } else if (isRecordType(f.type)) {
+    const elem = recordElementType(f.type)!;
+    const scalaElem = typeToScala(elem);
+    const tmp = `_tmp${scalaFieldReadCounter++}`;
+    L.push(`${indent}val ${tmp} = scala.collection.mutable.Map[String, ${scalaElem}]()`);
+    L.push(`${indent}r.beginObject()`);
+    L.push(`${indent}while (r.hasNextField()) { val key = r.readFieldName(); ${tmp}(key) = ${readExpr(elem, "r")} }`);
+    L.push(`${indent}r.endObject()`);
+    L.push(`${indent}${varName} = ${f.optional ? `Some(${tmp}.toMap)` : `${tmp}.toMap`}`);
+  } else {
+    L.push(`${indent}${varName} = ${readExpr(f.type, "r", f.optional)}`);
+  }
+}
+
 function readExpr(type: Type, r: string, optional?: boolean): string {
-  if (isArrayType(type)) {
-    const elem = arrayElementType(type)!;
-    const scalaElem = typeToScala(elem);
-    const inner = [
-      `val list = scala.collection.mutable.ArrayBuffer[${scalaElem}]()`,
-      `${r}.beginArray()`,
-      `while (${r}.hasNextElement()) { list += ${readExpr(elem, r)} }`,
-      `${r}.endArray()`,
-      `list.toSeq`,
-    ].join("; ");
-    const expr = `{ ${inner} }`;
-    return optional ? `Some(${expr})` : expr;
-  }
-  if (isRecordType(type)) {
-    const elem = recordElementType(type)!;
-    const scalaElem = typeToScala(elem);
-    const inner = [
-      `val map = scala.collection.mutable.Map[String, ${scalaElem}]()`,
-      `${r}.beginObject()`,
-      `while (${r}.hasNextField()) { val key = ${r}.readFieldName(); map(key) = ${readExpr(elem, r)} }`,
-      `${r}.endObject()`,
-      `map.toMap`,
-    ].join("; ");
-    const expr = `{ ${inner} }`;
-    return optional ? `Some(${expr})` : expr;
-  }
   const n = scalarName(type);
   if (n) {
     let base: string;
@@ -294,12 +293,18 @@ function generateModelCode(m: Model, _pkg: string): string {
     }
   }
   lines.push(`  r.beginObject()`);
+  scalaFieldReadCounter = 0;
   lines.push(`  while (r.hasNextField()) {`);
   lines.push(`    r.readFieldName() match {`);
   for (const f of fields) {
     const fld = toSnakeCase(f.name);
-    const rExpr = readExpr(f.type, "r", f.optional);
-    lines.push(`      case "${f.name}" => ${fld}Val = ${rExpr}`);
+    const varName = `${fld}Val`;
+    if (isArrayType(f.type) || isRecordType(f.type)) {
+      lines.push(`      case "${f.name}" =>`);
+      generateFieldRead(lines, f, varName, `        `);
+    } else {
+      lines.push(`      case "${f.name}" => ${varName} = ${readExpr(f.type, "r", f.optional)}`);
+    }
   }
   lines.push(`      case _ => r.skip()`);
   lines.push(`    }`);
