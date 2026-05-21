@@ -1,0 +1,7 @@
+{
+  "name": "specodec-emitter-scala-tests",
+  "private": true,
+  "dependencies": {
+    "@specodec/typespec-emitter-scala": "file:.."
+  }
+}
