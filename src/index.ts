@@ -22,7 +22,7 @@ import {
 
 export type EmitterOptions = BaseEmitterOptions;
 
-function typeToScala(type: Type): string {
+export function typeToScala(type: Type): string {
   if (isArrayType(type)) return `Seq[${typeToScala(arrayElementType(type)!)}]`;
   if (isRecordType(type)) return `Map[String, ${typeToScala(recordElementType(type)!)}]`;
   const n = scalarName(type);
@@ -60,7 +60,7 @@ function typeToScala(type: Type): string {
   return "Any";
 }
 
-function defaultValue(type: Type): string {
+export function defaultValue(type: Type): string {
   if (isArrayType(type)) return "Seq.empty";
   if (isRecordType(type)) return "Map.empty";
   const n = scalarName(type);
@@ -99,7 +99,7 @@ function defaultValue(type: Type): string {
   return "???";
 }
 
-function writeExpr(expr: string, type: Type, w: string): string {
+export function writeExpr(expr: string, type: Type, w: string): string {
   if (isArrayType(type)) {
     const elem = arrayElementType(type)!;
     return [
@@ -153,7 +153,7 @@ function writeExpr(expr: string, type: Type, w: string): string {
 }
 
 let scalaFieldReadCounter = 0;
-function generateFieldRead(L: string[], f: { name: string; type: Type; optional: boolean }, varName: string, indent: string): void {
+export function generateFieldRead(L: string[], f: { name: string; type: Type; optional: boolean }, varName: string, indent: string): void {
   if (isArrayType(f.type)) {
     const elem = arrayElementType(f.type)!;
     const scalaElem = typeToScala(elem);
@@ -177,7 +177,7 @@ function generateFieldRead(L: string[], f: { name: string; type: Type; optional:
   }
 }
 
-function readExpr(type: Type, r: string, optional?: boolean): string {
+export function readExpr(type: Type, r: string, optional?: boolean): string {
   const n = scalarName(type);
   if (n) {
     let base: string;
@@ -229,7 +229,7 @@ function readExpr(type: Type, r: string, optional?: boolean): string {
   return `???`;
 }
 
-function generateEnumCode(e: EnumInfo): string {
+export function generateEnumCode(e: EnumInfo): string {
   const lines: string[] = [];
   lines.push(`enum ${e.name}(val value: Int):`);
   for (const m of e.members) {
@@ -238,7 +238,7 @@ function generateEnumCode(e: EnumInfo): string {
   return lines.join("\n");
 }
 
-function generateModelCode(m: Model, _pkg: string): string {
+export function generateModelCode(m: Model, _pkg: string): string {
   const fields = extractFields(m);
   const optionalFields = fields.filter((f) => f.optional);
   const requiredFields = fields.filter((f) => !f.optional);
